@@ -1,4 +1,6 @@
 import axios from 'axios';
+import http from 'http';
+import { Builder, By, until } from 'selenium-webdriver';
 import { config } from './config.js';
 
 class BrowserbaseClient {
@@ -7,6 +9,9 @@ class BrowserbaseClient {
     this.apiUrl = config.browserbase.apiUrl;
     this.sessionId = null;
     this.projectId = config.browserbase.projectId;
+    this.driver = null;
+    this.seleniumUrl = null;
+    this.signingKey = null;
   }
 
   async createSession() {
@@ -14,70 +19,28 @@ class BrowserbaseClient {
       console.log(`🔧 Creating Browserbase session with API URL: ${this.apiUrl}`);
       console.log(`🔧 API Key (first 10 chars): ${this.apiKey.substring(0, 10)}...`);
       
-      // Try different API formats with projectId
-      const payloads = [
-        // Format 1: Simple session creation with projectId
+      const response = await axios.post(
+        `${this.apiUrl}/sessions`,
+        { projectId: this.projectId },
         {
-          projectId: this.projectId
-        },
-        // Format 2: With browser config and projectId
-        {
-          projectId: this.projectId,
-          browser: {
-            type: 'chromium',
-            headless: true,
-            viewport: { width: 1920, height: 1080 }
-          }
-        },
-        // Format 3: Alternative format with projectId
-        {
-          projectId: this.projectId,
-          config: {
-            browser: 'chromium',
-            headless: true
-          }
+          headers: {
+            'X-BB-API-Key': this.apiKey,
+            'Content-Type': 'application/json'
+          },
+          timeout: config.browserbase.timeout
         }
-      ];
+      );
 
-      let lastError = null;
+      console.log(`🔧 Response:`, JSON.stringify(response.data, null, 2));
       
-      for (const payload of payloads) {
-        try {
-          console.log(`🔧 Trying payload format:`, JSON.stringify(payload, null, 2));
-          
-          const response = await axios.post(
-            `${this.apiUrl}/sessions`,
-            payload,
-            {
-              headers: {
-                'Authorization': `Bearer ${this.apiKey}`,
-                'Content-Type': 'application/json'
-              },
-              timeout: config.browserbase.timeout
-            }
-          );
-
-          console.log(`🔧 Response:`, JSON.stringify(response.data, null, 2));
-          
-          // Handle different response formats
-          this.sessionId = response.data.sessionId || response.data.id || response.data.session_id;
-          
-          if (this.sessionId) {
-            console.log(`✅ Browserbase session created: ${this.sessionId}`);
-            return this.sessionId;
-          }
-        } catch (error) {
-          lastError = error;
-          console.log(`❌ Format failed: ${error.message}`);
-          if (error.response && error.response.data) {
-            console.log(`   Details:`, JSON.stringify(error.response.data, null, 2));
-          }
-          continue;
-        }
-      }
+      this.sessionId = response.data.id;
+      this.seleniumUrl = response.data.seleniumRemoteUrl;
+      this.signingKey = response.data.signingKey;
       
-      throw lastError || new Error('All API formats failed');
+      console.log(`✅ Browserbase session created: ${this.sessionId}`);
+      console.log(`🔗 Selenium URL: ${this.seleniumUrl}`);
       
+      return this.sessionId;
     } catch (error) {
       console.error('❌ Failed to create Browserbase session:');
       console.error('   Error:', error.message);
@@ -89,106 +52,120 @@ class BrowserbaseClient {
     }
   }
 
-  async navigateTo(url) {
-    if (!this.sessionId) {
-      throw new Error('No active session. Call createSession() first.');
+  async connectToSession() {
+    if (!this.seleniumUrl) {
+      throw new Error('No Selenium URL available. Call createSession() first.');
     }
 
     try {
-      const response = await axios.post(
-        `${this.apiUrl}/sessions/${this.sessionId}/navigate`,
-        { url },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: config.browserbase.timeout
-        }
-      );
+      console.log(`🔗 Connecting to Selenium WebDriver: ${this.seleniumUrl}`);
 
+      // Create a custom HTTP agent that sets the x-bb-signing-key header
+      const customHttpAgent = new http.Agent({});
+      customHttpAgent.addRequest = (req, options) => {
+        req.setHeader('x-bb-signing-key', this.signingKey);
+        http.Agent.prototype.addRequest.call(customHttpAgent, req, options);
+      };
+
+      this.driver = await new Builder()
+        .forBrowser('chrome')
+        .usingHttpAgent(customHttpAgent)
+        .usingServer(this.seleniumUrl)
+        .build();
+
+      console.log('✅ Connected to Selenium WebDriver');
+      return this.driver;
+    } catch (error) {
+      console.error('❌ Failed to connect to Selenium WebDriver:', error.message);
+      throw error;
+    }
+  }
+
+  async navigateTo(url) {
+    if (!this.driver) {
+      await this.connectToSession();
+    }
+
+    try {
+      console.log(`🌐 Navigating to: ${url}`);
+      await this.driver.get(url);
+      
+      // Wait for page to load
+      await this.driver.wait(until.titleIs(await this.driver.getTitle()), 10000);
+      
       console.log(`✅ Navigated to: ${url}`);
-      return response.data;
+      return { success: true };
     } catch (error) {
       console.error(`❌ Failed to navigate to ${url}:`, error.message);
-      if (error.response) {
-        console.error('   Status:', error.response.status);
-        console.error('   Data:', JSON.stringify(error.response.data, null, 2));
-      }
       throw error;
     }
   }
 
   async getPageContent() {
-    if (!this.sessionId) {
-      throw new Error('No active session. Call createSession() first.');
+    if (!this.driver) {
+      throw new Error('No active driver. Call navigateTo() first.');
     }
 
     try {
-      const response = await axios.get(
-        `${this.apiUrl}/sessions/${this.sessionId}/content`,
-        {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`
-          },
-          timeout: config.browserbase.timeout
-        }
-      );
-
-      return response.data;
+      console.log('📄 Getting page content...');
+      
+      // Get the page source (HTML)
+      const pageSource = await this.driver.getPageSource();
+      
+      // Get the page title
+      const title = await this.driver.getTitle();
+      
+      // Get visible text content
+      const bodyText = await this.driver.findElement(By.tagName('body')).getText();
+      
+      const content = {
+        title: title,
+        html: pageSource,
+        text: bodyText
+      };
+      
+      console.log(`✅ Got page content (${pageSource.length} chars HTML, ${bodyText.length} chars text)`);
+      return content;
     } catch (error) {
       console.error('❌ Failed to get page content:', error.message);
-      if (error.response) {
-        console.error('   Status:', error.response.status);
-        console.error('   Data:', JSON.stringify(error.response.data, null, 2));
-      }
       throw error;
     }
   }
 
   async takeScreenshot() {
-    if (!this.sessionId) {
-      throw new Error('No active session. Call createSession() first.');
+    if (!this.driver) {
+      throw new Error('No active driver. Call navigateTo() first.');
     }
 
     try {
-      const response = await axios.post(
-        `${this.apiUrl}/sessions/${this.sessionId}/screenshot`,
-        {
-          format: 'png',
-          fullPage: true
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: config.browserbase.timeout
-        }
-      );
-
-      return response.data.screenshotUrl || response.data.url;
+      console.log('📸 Taking screenshot...');
+      
+      const screenshot = await this.driver.takeScreenshot();
+      
+      // Convert base64 to a data URL
+      const screenshotUrl = `data:image/png;base64,${screenshot}`;
+      
+      console.log('✅ Screenshot taken');
+      return screenshotUrl;
     } catch (error) {
       console.error('❌ Failed to take screenshot:', error.message);
-      if (error.response) {
-        console.error('   Status:', error.response.status);
-        console.error('   Data:', JSON.stringify(error.response.data, null, 2));
-      }
       throw error;
     }
   }
 
   async searchGoogle(query) {
-    if (!this.sessionId) {
-      throw new Error('No active session. Call createSession() first.');
+    if (!this.driver) {
+      await this.connectToSession();
     }
 
     try {
       const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+      console.log(`🔍 Searching Google for: "${query}"`);
+      
       await this.navigateTo(searchUrl);
       
-      // Wait for page to load
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Wait for search results to load
+      await this.driver.wait(until.elementLocated(By.id('search')), 10000);
       
       const content = await this.getPageContent();
       return content;
@@ -199,23 +176,28 @@ class BrowserbaseClient {
   }
 
   async closeSession() {
-    if (!this.sessionId) {
-      return;
-    }
-
     try {
-      await axios.delete(
-        `${this.apiUrl}/sessions/${this.sessionId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`
-          },
-          timeout: config.browserbase.timeout
-        }
-      );
+      if (this.driver) {
+        console.log('🔒 Closing Selenium WebDriver...');
+        await this.driver.quit();
+        this.driver = null;
+        console.log('✅ Selenium WebDriver closed');
+      }
 
-      console.log(`✅ Browserbase session closed: ${this.sessionId}`);
-      this.sessionId = null;
+      if (this.sessionId) {
+        console.log(`🔒 Closing Browserbase session: ${this.sessionId}`);
+        await axios.delete(
+          `${this.apiUrl}/sessions/${this.sessionId}`,
+          {
+            headers: {
+              'X-BB-API-Key': this.apiKey
+            },
+            timeout: config.browserbase.timeout
+          }
+        );
+        console.log(`✅ Browserbase session closed: ${this.sessionId}`);
+        this.sessionId = null;
+      }
     } catch (error) {
       console.error('❌ Failed to close session:', error.message);
     }

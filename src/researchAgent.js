@@ -28,7 +28,7 @@ class StartupResearchAgent {
         await this.browserbase.navigateTo(aboutUrl);
         await new Promise(resolve => setTimeout(resolve, 2000));
         const aboutContent = await this.browserbase.getPageContent();
-        additionalContent += '\n\nAbout Page:\n' + aboutContent;
+        additionalContent += '\n\nAbout Page:\n' + aboutContent.text;
       } catch (error) {
         console.log('About page not accessible');
       }
@@ -39,12 +39,14 @@ class StartupResearchAgent {
         await this.browserbase.navigateTo(blogUrl);
         await new Promise(resolve => setTimeout(resolve, 2000));
         const blogContent = await this.browserbase.getPageContent();
-        additionalContent += '\n\nBlog Page:\n' + blogContent;
+        additionalContent += '\n\nBlog Page:\n' + blogContent.text;
       } catch (error) {
         console.log('Blog page not accessible');
       }
       
-      return content + additionalContent;
+      // Combine main content with additional pages
+      const fullContent = content.text + additionalContent;
+      return fullContent;
     } catch (error) {
       console.error('Failed to scrape website:', error.message);
       throw error;
@@ -65,7 +67,7 @@ class StartupResearchAgent {
         // Navigate back to homepage and search for press/news
         try {
           const searchResults = await this.browserbase.searchGoogle(`${this.startupName} funding press release news`);
-          fundingInfo = await this.openai.extractFundingInfo(searchResults);
+          fundingInfo = await this.openai.extractFundingInfo(searchResults.text);
         } catch (error) {
           console.log('Could not search for additional funding info');
         }
@@ -86,7 +88,7 @@ class StartupResearchAgent {
       const searchResults = await this.browserbase.searchGoogle(`${this.startupName} competitors alternatives`);
       
       // Use AI to analyze and identify competitors
-      const competitors = await this.openai.detectCompetitors(startupDescription, searchResults);
+      const competitors = await this.openai.detectCompetitors(startupDescription, searchResults.text);
       
       return competitors;
     } catch (error) {
@@ -182,7 +184,7 @@ ${report.industry}
 
 ## 🔗 Links
 - **Website**: ${report.url}
-${report.screenshot ? `- **Screenshot**: ${report.screenshot}` : ''}
+${report.screenshot ? `- **Screenshot**: ${report.screenshot.substring(0, 100)}... (base64 data URL)` : ''}
 
 ---
 *Report generated on ${new Date(report.timestamp).toLocaleString()}*
