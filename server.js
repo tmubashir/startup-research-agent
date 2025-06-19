@@ -29,7 +29,7 @@ app.post('/api/research', async (req, res) => {
     const agent = new StartupResearchAgent();
     
     // Run the research
-    const results = await agent.generateReport(startupName, websiteUrl);
+    const results = await agent.generateResearchReport(startupName, websiteUrl);
 
     console.log(`Research completed for: ${startupName}`);
 
@@ -58,4 +58,4 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📱 Frontend: http://localhost:${PORT}`);
   console.log(`🔌 API: http://localhost:${PORT}/api`);
-}); 
+});

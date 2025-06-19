@@ -9,260 +9,172 @@ class OpenAIClient {
   }
 
   async generateSummary(websiteContent, startupName) {
-    try {
-      const prompt = `
-        Analyze the following website content for ${startupName} and provide a comprehensive, professional summary.
+    const prompt = `You are a startup research analyst. Based on the provided website content, create a comprehensive executive summary for ${startupName}.
 
-        Website Content:
-        ${websiteContent.substring(0, 4000)}
+**Website Content:**
+${websiteContent}
 
-        Please provide a clear, structured summary that includes:
+**Instructions:**
+- Write a clear, professional executive summary (2-3 paragraphs)
+- Focus on what the company does, their value proposition, target market, and key features
+- Use bullet points for key features/benefits
+- Keep it concise but informative
+- Avoid marketing language - be objective and analytical
+- Structure the response with clear sections
 
-        **Company Overview:**
-        - What product or service this company offers
-        - Their primary business model and revenue streams
+**Format your response as:**
+## Executive Summary
+[2-3 paragraph summary]
 
-        **Target Market:**
-        - Who their ideal customers are
-        - Market segments they serve
+## Key Features
+- [Feature 1]
+- [Feature 2]
+- [Feature 3]
 
-        **Value Proposition:**
-        - Their main competitive advantage
-        - Key benefits they provide to customers
+## Target Market
+[Clear description of target customers]
 
-        **Key Features:**
-        - 3-5 most important features or capabilities
-        - What makes them unique
+## Value Proposition
+[What makes them unique/different]`;
 
-        **Technology & Approach:**
-        - Any notable technologies they use
-        - Their approach to solving problems
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 800
+    });
 
-        Write this in a professional, business-friendly tone. Keep it comprehensive but concise (300-400 words).
-        Use clear headings and bullet points where appropriate.
-      `;
-
-      const response = await this.openai.chat.completions.create({
-        model: config.openai.model,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a senior business analyst specializing in startup research and market analysis. Provide clear, structured, and professional analysis.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: config.openai.maxTokens,
-        temperature: config.openai.temperature
-      });
-
-      return response.choices[0].message.content.trim();
-    } catch (error) {
-      console.error('Failed to generate summary:', error.message);
-      throw error;
-    }
+    return response.choices[0].message.content;
   }
 
-  async extractFundingInfo(content) {
-    try {
-      const prompt = `
-        Analyze the following content and extract comprehensive funding-related information.
+  async generateFundingInfo(websiteContent, startupName) {
+    const prompt = `You are a startup research analyst. Analyze the provided website content to extract funding information for ${startupName}.
 
-        Content:
-        ${content.substring(0, 3000)}
+**Website Content:**
+${websiteContent}
 
-        Please provide a detailed funding analysis including:
+**Instructions:**
+- Look for any mention of funding rounds, investors, investment amounts, or valuation
+- Search for terms like "Series A", "Series B", "funding", "investment", "investors", "raised", "valuation"
+- If no funding information is found, clearly state that
+- If funding info is found, provide details in a structured format
+- Be specific about amounts, dates, and investor names if available
 
-        **Funding Rounds:**
-        - Series A, B, C, etc. with amounts
-        - Seed funding if mentioned
-        - Any other investment rounds
+**Format your response as:**
+## Funding Information
+[Detailed funding information or "No funding information found"]
 
-        **Investment Details:**
-        - Total funding raised
-        - Individual round amounts
-        - Valuation information (if available)
+## Key Details
+- Funding Round: [if applicable]
+- Amount: [if applicable]
+- Date: [if applicable]
+- Investors: [if applicable]
+- Valuation: [if applicable]`;
 
-        **Investors:**
-        - Lead investors for each round
-        - Notable angel investors
-        - Venture capital firms involved
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2,
+      max_tokens: 600
+    });
 
-        **Timeline:**
-        - Funding dates
-        - Company milestones around funding
-
-        **Additional Context:**
-        - How they plan to use the funding
-        - Growth plans or expansion mentioned
-
-        If no funding information is found, clearly state: "No funding information was found in the analyzed content."
-
-        Format your response with clear headings and bullet points for easy reading.
-      `;
-
-      const response = await this.openai.chat.completions.create({
-        model: config.openai.model,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a financial analyst specializing in startup funding research. Provide detailed, accurate funding analysis with clear structure.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: config.openai.maxTokens,
-        temperature: config.openai.temperature
-      });
-
-      return response.choices[0].message.content.trim();
-    } catch (error) {
-      console.error('Failed to extract funding info:', error.message);
-      throw error;
-    }
+    return response.choices[0].message.content;
   }
 
-  async detectCompetitors(startupDescription, searchResults) {
-    try {
-      const prompt = `
-        Based on the startup description and search results, provide a comprehensive competitive analysis.
+  async generateCompetitors(websiteContent, startupName) {
+    const prompt = `You are a startup research analyst. Based on the provided website content, identify potential competitors for ${startupName}.
 
-        Startup Description:
-        ${startupDescription}
+**Website Content:**
+${websiteContent}
 
-        Search Results:
-        ${searchResults.substring(0, 3000)}
+**Instructions:**
+- Analyze the company's industry, product/service, and target market
+- Identify 3-5 direct competitors in the same space
+- For each competitor, provide:
+  * Company name
+  * Brief description of what they do
+  * Why they're considered a competitor
+- If you cannot identify specific competitors, explain why and suggest the general competitive landscape
+- Focus on companies that offer similar products/services or target the same market
 
-        Please provide a detailed competitive analysis including:
+**Format your response as:**
+## Competitive Analysis
+[Overview of competitive landscape]
 
-        **Direct Competitors:**
-        - Companies offering similar products/services
-        - Direct alternatives to this startup
-        - For each: Company name, brief description, key differentiators
+## Direct Competitors
+1. **[Competitor Name]**
+   - Description: [What they do]
+   - Competitive Angle: [Why they compete]
 
-        **Indirect Competitors:**
-        - Companies in the same market space
-        - Alternative solutions customers might consider
-        - For each: Company name, what they do, why they're relevant
+2. **[Competitor Name]**
+   - Description: [What they do]
+   - Competitive Angle: [Why they compete]
 
-        **Market Positioning:**
-        - How this startup differentiates itself
-        - Any "unlike X" or "compared to Y" language found
-        - Unique value propositions mentioned
+[Continue for 3-5 competitors]
 
-        **Competitive Landscape:**
-        - Market share indicators (if mentioned)
-        - Pricing comparisons (if available)
-        - Feature comparisons (if mentioned)
+## Competitive Landscape
+[Summary of competitive positioning]`;
 
-        If no competitors are clearly identified, explain why and suggest potential competitors based on the industry.
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 800
+    });
 
-        Format with clear headings and bullet points for easy reading.
-      `;
-
-      const response = await this.openai.chat.completions.create({
-        model: config.openai.model,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a competitive intelligence analyst specializing in startup ecosystem research. Provide thorough competitive analysis with clear structure.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: config.openai.maxTokens,
-        temperature: config.openai.temperature
-      });
-
-      return response.choices[0].message.content.trim();
-    } catch (error) {
-      console.error('Failed to detect competitors:', error.message);
-      throw error;
-    }
+    return response.choices[0].message.content;
   }
 
-  async generateIndustryOverview(startupDescription, competitors) {
-    try {
-      const prompt = `
-        Based on the startup description and competitor information, provide a comprehensive industry analysis.
+  async generateIndustryOverview(websiteContent, startupName) {
+    const prompt = `You are a startup research analyst. Create a comprehensive industry overview for ${startupName} based on the provided website content.
 
-        Startup Description:
-        ${startupDescription}
+**Website Content:**
+${websiteContent}
 
-        Competitors:
-        ${competitors}
+**Instructions:**
+- Analyze the industry/sector this startup operates in
+- Provide market size, growth trends, and key players
+- Include current market dynamics and challenges
+- Discuss growth potential and opportunities
+- Use bullet points for better readability
+- Be specific with numbers and data when possible
+- Structure the information clearly
 
-        Please provide a detailed industry overview including:
+**Format your response as:**
+## Industry Overview
 
-        **Industry Classification:**
-        - Primary industry and sector
-        - Sub-industry or niche
-        - Related industries
+### Market Size & Growth
+- [Market size and growth statistics]
+- [Growth rate and projections]
 
-        **Market Trends:**
-        - Current trends driving growth
-        - Technology trends affecting the industry
-        - Consumer behavior changes
-        - Regulatory or policy impacts
+### Key Market Trends
+- [Trend 1]
+- [Trend 2]
+- [Trend 3]
 
-        **Market Size & Growth:**
-        - Total addressable market (TAM)
-        - Serviceable addressable market (SAM)
-        - Growth rate and projections
-        - Regional market variations
+### Major Players
+- [Key companies in the space]
+- [Market leaders and their positioning]
 
-        **Key Players:**
-        - Market leaders and incumbents
-        - Emerging challengers
-        - Notable startups in the space
-        - Market share distribution (if known)
+### Market Challenges
+- [Challenge 1]
+- [Challenge 2]
 
-        **Growth Drivers:**
-        - Factors fueling industry growth
-        - Technology adoption trends
-        - Market demand drivers
+### Growth Opportunities
+- [Opportunity 1]
+- [Opportunity 2]
 
-        **Challenges & Risks:**
-        - Industry challenges and barriers
-        - Competitive threats
-        - Regulatory risks
-        - Technology disruption risks
+### Industry Outlook
+[Summary of future prospects]`;
 
-        **Future Outlook:**
-        - Industry projections
-        - Emerging opportunities
-        - Potential disruptions
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 1000
+    });
 
-        Format with clear headings, bullet points, and professional analysis. Include specific data points when possible.
-      `;
-
-      const response = await this.openai.chat.completions.create({
-        model: config.openai.model,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an industry analyst with expertise in market research and business intelligence. Provide comprehensive industry analysis with clear structure and actionable insights.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: config.openai.maxTokens,
-        temperature: config.openai.temperature
-      });
-
-      return response.choices[0].message.content.trim();
-    } catch (error) {
-      console.error('Failed to generate industry overview:', error.message);
-      throw error;
-    }
+    return response.choices[0].message.content;
   }
 }
 

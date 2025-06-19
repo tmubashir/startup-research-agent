@@ -1,5 +1,6 @@
 import BrowserbaseClient from './browserbase.js';
 import OpenAIClient from './openai.js';
+import fs from 'fs';
 
 class StartupResearchAgent {
   constructor() {
@@ -121,60 +122,92 @@ class StartupResearchAgent {
     }
   }
 
-  async generateReport(startupName, url) {
-    console.log(`🚀 Starting research for: ${startupName}`);
-    this.startupName = startupName;
-    
+  async generateResearchReport(startupName, websiteUrl) {
+    console.log(`🔍 Starting research for: ${startupName}`);
+    console.log(`🌐 Website: ${websiteUrl}`);
+
     try {
-      // Step 1: Scrape website
-      const websiteContent = await this.scrapeWebsite(url);
+      // Step 1: Create session and navigate to website
+      console.log('📄 Scraping website content...');
+      await this.browserbase.createSession();
+      await this.browserbase.navigateTo(websiteUrl);
+      const websiteContent = await this.browserbase.getPageContent();
       
-      // Step 2: Generate startup summary
-      console.log('📝 Generating startup summary...');
-      const startupSummary = await this.openai.generateSummary(websiteContent, startupName);
+      if (!websiteContent || !websiteContent.text || websiteContent.text.length < 100) {
+        throw new Error('Failed to extract sufficient content from website');
+      }
+
+      // Step 2: Take screenshot
+      console.log('📸 Taking website screenshot...');
+      const screenshot = await this.browserbase.takeScreenshot();
+
+      // Step 3: Generate analysis using OpenAI
+      console.log('🤖 Generating AI analysis...');
       
-      // Step 3: Extract funding information
-      const fundingInfo = await this.extractFundingInfo(websiteContent);
-      
-      // Step 4: Detect competitors
-      const competitors = await this.detectCompetitors(startupSummary);
-      
-      // Step 5: Generate industry overview
-      const industryOverview = await this.generateIndustryOverview(startupSummary, competitors);
-      
-      // Step 6: Capture screenshot
-      const screenshotUrl = await this.captureScreenshot();
-      
-      // Step 7: Generate final report
+      const [summary, funding, competitors, industry] = await Promise.all([
+        this.openai.generateSummary(websiteContent.text, startupName),
+        this.openai.generateFundingInfo(websiteContent.text, startupName),
+        this.openai.generateCompetitors(websiteContent.text, startupName),
+        this.openai.generateIndustryOverview(websiteContent.text, startupName)
+      ]);
+
+      // Step 4: Compile report
       const report = {
         startupName,
-        url,
-        summary: startupSummary,
-        funding: fundingInfo,
+        url: websiteUrl,
+        summary,
+        funding,
         competitors,
-        industry: industryOverview,
-        screenshot: screenshotUrl,
+        industry,
+        screenshot,
         timestamp: new Date().toISOString()
       };
-      
-      return report;
-    } catch (error) {
-      console.error('Failed to generate report:', error.message);
-      throw error;
-    } finally {
-      // Always close the browser session
+
+      // Step 5: Save reports
+      await this.saveReport(report);
+
+      // Step 6: Close session
       await this.browserbase.closeSession();
+
+      console.log('✅ Research completed successfully!');
+      return report;
+
+    } catch (error) {
+      console.error('❌ Research failed:', error.message);
+      // Try to close session even if there was an error
+      try {
+        await this.browserbase.closeSession();
+      } catch (closeError) {
+        console.log('⚠️  Could not close session:', closeError.message);
+      }
+      throw error;
     }
   }
 
   generateMarkdownReport(report) {
+    // Format the timestamp nicely
+    const timestamp = new Date(report.timestamp).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short'
+    });
+
+    // Clean up the content for better formatting
+    const cleanSummary = report.summary.replace(/\*\*/g, '').replace(/\n/g, '\n\n');
+    const cleanFunding = report.funding.replace(/\*\*/g, '').replace(/\n/g, '\n\n');
+    const cleanCompetitors = report.competitors.replace(/\*\*/g, '').replace(/\n/g, '\n\n');
+    const cleanIndustry = report.industry.replace(/\*\*/g, '').replace(/\n/g, '\n\n');
+
     const markdown = `# 🚀 Startup Research Report: ${report.startupName}
 
 <div align="center">
 
 ![${report.startupName}](https://img.shields.io/badge/Startup-${encodeURIComponent(report.startupName)}-blue?style=for-the-badge&logo=rocket)
 
-**Report Generated:** ${new Date(report.timestamp).toLocaleString()}  
+**Report Generated:** ${timestamp}  
 **Website:** [Visit ${report.startupName}](${report.url})
 
 </div>
@@ -183,25 +216,25 @@ class StartupResearchAgent {
 
 ## 📋 Executive Summary
 
-> ${report.summary}
+${cleanSummary}
 
 ---
 
 ## 💰 Funding Information
 
-${report.funding}
+${cleanFunding}
 
 ---
 
 ## 🏆 Competitive Analysis
 
-${report.competitors}
+${cleanCompetitors}
 
 ---
 
 ## 📊 Industry Overview
 
-${report.industry}
+${cleanIndustry}
 
 ---
 
@@ -210,20 +243,20 @@ ${report.industry}
 | Resource | Link |
 |----------|------|
 | **Website** | [Visit ${report.startupName}](${report.url}) |
-${report.screenshot ? `| **Screenshot** | [View Screenshot](${report.screenshot}) |` : ''}
+${report.screenshot ? `| **Screenshot** | [View Screenshot](${report.screenshot}) |` : '| **Screenshot** | Not available |'}
 
 ---
 
 ## 📈 Key Insights
 
 ### 🎯 **What They Do**
-${report.summary.split('.')[0]}.
+${cleanSummary.split('.')[0]}.
 
 ### 💡 **Value Proposition**
-${report.summary.includes('value proposition') ? report.summary.split('value proposition')[1]?.split('.')[0] : 'Provides innovative solutions in their market segment'}.
+${cleanSummary.includes('value proposition') ? cleanSummary.split('value proposition')[1]?.split('.')[0] : 'Provides innovative solutions in their market segment'}.
 
 ### 🎪 **Target Market**
-${report.summary.includes('target market') ? report.summary.split('target market')[1]?.split('.')[0] : 'Businesses seeking their specific solution'}.
+${cleanSummary.includes('target market') ? cleanSummary.split('target market')[1]?.split('.')[0] : 'Businesses seeking their specific solution'}.
 
 ---
 
@@ -237,6 +270,71 @@ ${report.summary.includes('target market') ? report.summary.split('target market
 
     return markdown;
   }
+
+  // Generate a clean JSON report without base64 data
+  generateCleanJsonReport(report) {
+    const cleanReport = {
+      startupName: report.startupName,
+      url: report.url,
+      summary: report.summary,
+      funding: report.funding,
+      competitors: report.competitors,
+      industry: report.industry,
+      screenshot: report.screenshot ? 'Screenshot available' : 'No screenshot',
+      timestamp: report.timestamp,
+      reportGenerated: new Date(report.timestamp).toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZoneName: 'short'
+      })
+    };
+    
+    return cleanReport;
+  }
+
+  async saveReport(report) {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const safeName = report.startupName.replace(/[^a-zA-Z0-9]/g, '_');
+    const filename = `${safeName}_report_${timestamp}`;
+    
+    // Create reports directory if it doesn't exist
+    if (!fs.existsSync('reports')) {
+      fs.mkdirSync('reports');
+    }
+
+    // Save clean JSON report (without base64 data)
+    const cleanJsonReport = this.generateCleanJsonReport(report);
+    const jsonPath = `reports/${filename}.json`;
+    fs.writeFileSync(jsonPath, JSON.stringify(cleanJsonReport, null, 2));
+    console.log(`✅ JSON report saved: ${jsonPath}`);
+
+    // Save enhanced Markdown report
+    const markdownReport = this.generateMarkdownReport(report);
+    const mdPath = `reports/${filename}.md`;
+    fs.writeFileSync(mdPath, markdownReport);
+    console.log(`✅ Markdown report saved: ${mdPath}`);
+
+    // Save screenshot separately if available
+    if (report.screenshot && report.screenshot.startsWith('data:image')) {
+      try {
+        const base64Data = report.screenshot.replace(/^data:image\/\w+;base64,/, '');
+        const screenshotPath = `reports/${filename}_screenshot.png`;
+        fs.writeFileSync(screenshotPath, Buffer.from(base64Data, 'base64'));
+        console.log(`✅ Screenshot saved: ${screenshotPath}`);
+      } catch (error) {
+        console.log('⚠️  Could not save screenshot:', error.message);
+      }
+    }
+
+    return {
+      jsonPath,
+      mdPath,
+      filename
+    };
+  }
 }
 
-export default StartupResearchAgent; 
+export default StartupResearchAgent;
