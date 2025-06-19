@@ -8,6 +8,16 @@ class OpenAIClient {
     });
   }
 
+  async complete(prompt, max_tokens = 800, temperature = 0.3) {
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: prompt }],
+      temperature,
+      max_tokens
+    });
+    return response.choices[0].message.content;
+  }
+
   async generateSummary(websiteContent, startupName) {
     const prompt = `You are a startup research analyst. Based on the provided website content, create a comprehensive executive summary for ${startupName}.
 
@@ -15,166 +25,117 @@ class OpenAIClient {
 ${websiteContent}
 
 **Instructions:**
-- Write a clear, professional executive summary (2-3 paragraphs)
-- Focus on what the company does, their value proposition, target market, and key features
-- Use bullet points for key features/benefits
-- Keep it concise but informative
-- Avoid marketing language - be objective and analytical
-- Structure the response with clear sections
+- Format your response in Markdown.
+- Use a section header: ## Executive Summary
+- Write 2-3 concise, professional paragraphs.
+- Add a section: ## Key Features (bulleted list)
+- Add a section: ## Target Market (short paragraph)
+- Add a section: ## Value Proposition (short paragraph)
+- Use clear line breaks and spacing for readability.
 
-**Format your response as:**
+**Example Format:**
 ## Executive Summary
 [2-3 paragraph summary]
 
 ## Key Features
 - [Feature 1]
 - [Feature 2]
-- [Feature 3]
 
 ## Target Market
-[Clear description of target customers]
+[Description]
 
 ## Value Proposition
-[What makes them unique/different]`;
-
-    const response = await this.openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-      max_tokens: 800
-    });
-
-    return response.choices[0].message.content;
+[Description]
+`;
+    return this.complete(prompt, 800, 0.3);
   }
 
   async generateFundingInfo(websiteContent, startupName) {
-    const prompt = `You are a startup research analyst. Analyze the provided website content to extract funding information for ${startupName}.
+    const prompt = `You are a startup research analyst specializing in funding analysis. Analyze the provided content to extract comprehensive funding information for ${startupName}.
 
-**Website Content:**
+**Content to Analyze:**
 ${websiteContent}
 
 **Instructions:**
-- Look for any mention of funding rounds, investors, investment amounts, or valuation
-- Search for terms like "Series A", "Series B", "funding", "investment", "investors", "raised", "valuation"
-- If no funding information is found, clearly state that
-- If funding info is found, provide details in a structured format
-- Be specific about amounts, dates, and investor names if available
+- Format your response in Markdown.
+- Use a section header: ## Funding Information
+- If funding is found, use a bulleted list for each round (amount, date, investors, valuation, etc.)
+- If no funding is found, clearly state so under the header
+- Add a section: ## Notable Investors (bulleted list, if any)
+- Add a section: ## Funding Summary (short paragraph)
+- Use clear line breaks and spacing for readability.
 
-**Format your response as:**
+**Example Format:**
 ## Funding Information
-[Detailed funding information or "No funding information found"]
+- **Series A**: $10M, Jan 2022, led by Sequoia
+- **Seed**: $2M, 2021, Y Combinator
 
-## Key Details
-- Funding Round: [if applicable]
-- Amount: [if applicable]
-- Date: [if applicable]
-- Investors: [if applicable]
-- Valuation: [if applicable]`;
+## Notable Investors
+- Sequoia Capital
+- Y Combinator
 
-    const response = await this.openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.2,
-      max_tokens: 600
-    });
-
-    return response.choices[0].message.content;
+## Funding Summary
+[Short summary]
+`;
+    return this.complete(prompt, 600, 0.2);
   }
 
   async generateCompetitors(websiteContent, startupName) {
-    const prompt = `You are a startup research analyst. Based on the provided website content, identify potential competitors for ${startupName}.
+    const prompt = `You are a startup research analyst. Based on the provided website content, generate a detailed competitive analysis for ${startupName}.
 
 **Website Content:**
 ${websiteContent}
 
 **Instructions:**
-- Analyze the company's industry, product/service, and target market
-- Identify 3-5 direct competitors in the same space
-- For each competitor, provide:
-  * Company name
-  * Brief description of what they do
-  * Why they're considered a competitor
-- If you cannot identify specific competitors, explain why and suggest the general competitive landscape
-- Focus on companies that offer similar products/services or target the same market
+- Format your response in Markdown.
+- Use a section header: ## Competitive Analysis
+- List direct competitors as a bulleted list. For each competitor, include:
+  - **Name** (bold)
+  - *Description* (italic)
+  - Sub-bullet for Competitive Angle (why/how they compete)
+- Use clear line breaks and spacing for readability.
+- After the list, add a section header: ## Competitive Landscape
+- Write a short paragraph summarizing the overall competitive landscape and what makes ${startupName} unique.
 
-**Format your response as:**
+**Example Format:**
 ## Competitive Analysis
-[Overview of competitive landscape]
-
-## Direct Competitors
-1. **[Competitor Name]**
-   - Description: [What they do]
-   - Competitive Angle: [Why they compete]
-
-2. **[Competitor Name]**
-   - Description: [What they do]
-   - Competitive Angle: [Why they compete]
-
-[Continue for 3-5 competitors]
+- **Competitor 1**: *Description*
+  - Competitive Angle: [explanation]
+- **Competitor 2**: *Description*
+  - Competitive Angle: [explanation]
 
 ## Competitive Landscape
-[Summary of competitive positioning]`;
-
-    const response = await this.openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-      max_tokens: 800
-    });
-
-    return response.choices[0].message.content;
+[Paragraph]
+`;
+    return this.complete(prompt, 700, 0.3);
   }
 
   async generateIndustryOverview(websiteContent, startupName) {
-    const prompt = `You are a startup research analyst. Create a comprehensive industry overview for ${startupName} based on the provided website content.
+    const prompt = `You are a startup research analyst. Based on the provided website content, generate a detailed industry overview for ${startupName}.
 
 **Website Content:**
 ${websiteContent}
 
 **Instructions:**
-- Analyze the industry/sector this startup operates in
-- Provide market size, growth trends, and key players
-- Include current market dynamics and challenges
-- Discuss growth potential and opportunities
-- Use bullet points for better readability
-- Be specific with numbers and data when possible
-- Structure the information clearly
+- Format your response in Markdown.
+- Use a section header: ## Industry Overview
+- Write 1-2 paragraphs about the industry, trends, and market size
+- Add a section: ## Key Trends (bulleted list)
+- Add a section: ## Market Size (short paragraph)
+- Use clear line breaks and spacing for readability.
 
-**Format your response as:**
+**Example Format:**
 ## Industry Overview
+[Paragraphs]
 
-### Market Size & Growth
-- [Market size and growth statistics]
-- [Growth rate and projections]
-
-### Key Market Trends
+## Key Trends
 - [Trend 1]
 - [Trend 2]
-- [Trend 3]
 
-### Major Players
-- [Key companies in the space]
-- [Market leaders and their positioning]
-
-### Market Challenges
-- [Challenge 1]
-- [Challenge 2]
-
-### Growth Opportunities
-- [Opportunity 1]
-- [Opportunity 2]
-
-### Industry Outlook
-[Summary of future prospects]`;
-
-    const response = await this.openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-      max_tokens: 1000
-    });
-
-    return response.choices[0].message.content;
+## Market Size
+[Description]
+`;
+    return this.complete(prompt, 600, 0.3);
   }
 }
 

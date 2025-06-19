@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 import '../styles/ResearchResults.css'
 
 const ResearchResults = ({ results, onReset }) => {
@@ -94,7 +95,7 @@ const ResearchResults = ({ results, onReset }) => {
               <div className="summary-card">
                 <h3>Executive Summary</h3>
                 <div className="summary-content">
-                  <p>{results.summary}</p>
+                  <ReactMarkdown>{results.summary}</ReactMarkdown>
                 </div>
               </div>
               
@@ -119,7 +120,9 @@ const ResearchResults = ({ results, onReset }) => {
             <div className="funding-section">
               <div className="funding-card">
                 <h3>Funding Intelligence</h3>
-                <div className="funding-content" dangerouslySetInnerHTML={{ __html: results.funding }} />
+                <div className="funding-content">
+                  <ReactMarkdown>{results.funding}</ReactMarkdown>
+                </div>
               </div>
             </div>
           )}
@@ -128,7 +131,9 @@ const ResearchResults = ({ results, onReset }) => {
             <div className="competitors-section">
               <div className="competitors-card">
                 <h3>Competitive Analysis</h3>
-                <div className="competitors-content" dangerouslySetInnerHTML={{ __html: results.competitors }} />
+                <div className="competitors-content">
+                  <ReactMarkdown>{results.competitors}</ReactMarkdown>
+                </div>
               </div>
             </div>
           )}
@@ -137,7 +142,9 @@ const ResearchResults = ({ results, onReset }) => {
             <div className="industry-section">
               <div className="industry-card">
                 <h3>Industry Overview</h3>
-                <div className="industry-content" dangerouslySetInnerHTML={{ __html: results.industry }} />
+                <div className="industry-content">
+                  <ReactMarkdown>{results.industry}</ReactMarkdown>
+                </div>
               </div>
             </div>
           )}

@@ -54,23 +54,33 @@ class StartupResearchAgent {
     }
   }
 
-  async extractFundingInfo(content) {
+  async extractFundingInfo(content, startupName) {
     console.log('💰 Extracting funding information...');
     
     try {
       // First, try to find funding info in the scraped content
-      let fundingInfo = await this.openai.extractFundingInfo(content);
+      let fundingInfo = await this.openai.generateFundingInfo(content, startupName);
       
       // If no funding info found, try searching for press releases or news
-      if (fundingInfo.toLowerCase().includes('no funding') || fundingInfo.toLowerCase().includes('not found')) {
+      if (fundingInfo.toLowerCase().includes('no funding') || 
+          fundingInfo.toLowerCase().includes('not found') ||
+          fundingInfo.toLowerCase().includes('unable to find')) {
         console.log('No funding info found in content, searching for press releases...');
         
-        // Navigate back to homepage and search for press/news
         try {
-          const searchResults = await this.browserbase.searchGoogle(`${this.startupName} funding press release news`);
-          fundingInfo = await this.openai.extractFundingInfo(searchResults.text);
+          // Search for funding news and press releases
+          const searchQuery = `${startupName} funding press release news investment`;
+          console.log(`🔍 Searching Google for: "${searchQuery}"`);
+          const searchResults = await this.browserbase.searchGoogle(searchQuery);
+          
+          if (searchResults && searchResults.text && searchResults.text.length > 100) {
+            console.log('Found search results, analyzing for funding info...');
+            fundingInfo = await this.openai.generateFundingInfo(searchResults.text, startupName);
+          } else {
+            console.log('No search results found for funding info');
+          }
         } catch (error) {
-          console.log('Could not search for additional funding info');
+          console.log('Could not search for additional funding info:', error.message);
         }
       }
       
@@ -141,17 +151,20 @@ class StartupResearchAgent {
       console.log('📸 Taking website screenshot...');
       const screenshot = await this.browserbase.takeScreenshot();
 
-      // Step 3: Generate analysis using OpenAI
+      // Step 3: Generate analysis using OpenAI (with enhanced funding search)
       console.log('🤖 Generating AI analysis...');
       
-      const [summary, funding, competitors, industry] = await Promise.all([
+      const [summary, competitors, industry] = await Promise.all([
         this.openai.generateSummary(websiteContent.text, startupName),
-        this.openai.generateFundingInfo(websiteContent.text, startupName),
         this.openai.generateCompetitors(websiteContent.text, startupName),
         this.openai.generateIndustryOverview(websiteContent.text, startupName)
       ]);
 
-      // Step 4: Compile report
+      // Step 4: Enhanced funding search
+      console.log('💰 Searching for funding information...');
+      const funding = await this.extractFundingInfo(websiteContent.text, startupName);
+
+      // Step 5: Compile report
       const report = {
         startupName,
         url: websiteUrl,
@@ -163,10 +176,10 @@ class StartupResearchAgent {
         timestamp: new Date().toISOString()
       };
 
-      // Step 5: Save reports
+      // Step 6: Save reports
       await this.saveReport(report);
 
-      // Step 6: Close session
+      // Step 7: Close session
       await this.browserbase.closeSession();
 
       console.log('✅ Research completed successfully!');
@@ -185,7 +198,6 @@ class StartupResearchAgent {
   }
 
   generateMarkdownReport(report) {
-    // Format the timestamp nicely
     const timestamp = new Date(report.timestamp).toLocaleString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -195,79 +207,34 @@ class StartupResearchAgent {
       timeZoneName: 'short'
     });
 
-    // Clean up the content for better formatting
-    const cleanSummary = report.summary.replace(/\*\*/g, '').replace(/\n/g, '\n\n');
-    const cleanFunding = report.funding.replace(/\*\*/g, '').replace(/\n/g, '\n\n');
-    const cleanCompetitors = report.competitors.replace(/\*\*/g, '').replace(/\n/g, '\n\n');
-    const cleanIndustry = report.industry.replace(/\*\*/g, '').replace(/\n/g, '\n\n');
-
+    // Use the content as-is to preserve Markdown formatting
     const markdown = `# 🚀 Startup Research Report: ${report.startupName}
 
-<div align="center">
+---
 
-![${report.startupName}](https://img.shields.io/badge/Startup-${encodeURIComponent(report.startupName)}-blue?style=for-the-badge&logo=rocket)
-
-**Report Generated:** ${timestamp}  
-**Website:** [Visit ${report.startupName}](${report.url})
-
-</div>
+**Website:** [${report.websiteUrl}](${report.websiteUrl})  
+**Generated:** ${timestamp}
 
 ---
 
-## 📋 Executive Summary
-
-${cleanSummary}
+${report.summary}
 
 ---
 
-## 💰 Funding Information
-
-${cleanFunding}
+${report.funding}
 
 ---
 
-## 🏆 Competitive Analysis
-
-${cleanCompetitors}
+${report.competitors}
 
 ---
 
-## 📊 Industry Overview
-
-${cleanIndustry}
+${report.industry}
 
 ---
 
-## 🔗 Additional Resources
-
-| Resource | Link |
-|----------|------|
-| **Website** | [Visit ${report.startupName}](${report.url}) |
-${report.screenshot ? `| **Screenshot** | [View Screenshot](${report.screenshot}) |` : '| **Screenshot** | Not available |'}
-
----
-
-## 📈 Key Insights
-
-### 🎯 **What They Do**
-${cleanSummary.split('.')[0]}.
-
-### 💡 **Value Proposition**
-${cleanSummary.includes('value proposition') ? cleanSummary.split('value proposition')[1]?.split('.')[0] : 'Provides innovative solutions in their market segment'}.
-
-### 🎪 **Target Market**
-${cleanSummary.includes('target market') ? cleanSummary.split('target market')[1]?.split('.')[0] : 'Businesses seeking their specific solution'}.
-
----
-
-<div align="center">
-
-**Report generated by AI-powered Startup Research Agent** 🤖  
-*Powered by OpenAI GPT-4 & Browserbase*
-
-</div>
+![Screenshot](${report.screenshotPath || ''})
 `;
-
     return markdown;
   }
 
