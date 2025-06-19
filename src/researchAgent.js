@@ -91,23 +91,6 @@ class StartupResearchAgent {
     }
   }
 
-  async detectCompetitors(startupDescription) {
-    console.log('🏆 Detecting competitors...');
-    
-    try {
-      // Search for competitors using Google
-      const searchResults = await this.browserbase.searchGoogle(`${this.startupName} competitors alternatives`);
-      
-      // Use AI to analyze and identify competitors
-      const competitors = await this.openai.detectCompetitors(startupDescription, searchResults.text);
-      
-      return competitors;
-    } catch (error) {
-      console.error('Failed to detect competitors:', error.message);
-      return 'Unable to detect competitors';
-    }
-  }
-
   async generateIndustryOverview(startupDescription, competitors) {
     console.log('📊 Generating industry overview...');
     
@@ -151,12 +134,11 @@ class StartupResearchAgent {
       console.log('📸 Taking website screenshot...');
       const screenshot = await this.browserbase.takeScreenshot();
 
-      // Step 3: Generate analysis using OpenAI (with enhanced funding search)
+      // Step 3: Generate summary and industry overview using website content
       console.log('🤖 Generating AI analysis...');
       
-      const [summary, competitors, industry] = await Promise.all([
+      const [summary, industry] = await Promise.all([
         this.openai.generateSummary(websiteContent.text, startupName),
-        this.openai.generateCompetitors(websiteContent.text, startupName),
         this.openai.generateIndustryOverview(websiteContent.text, startupName)
       ]);
 
@@ -164,7 +146,28 @@ class StartupResearchAgent {
       console.log('💰 Searching for funding information...');
       const funding = await this.extractFundingInfo(websiteContent.text, startupName);
 
-      // Step 5: Compile report
+      // Step 5: Enhanced competitor detection using Google search
+      console.log('🏆 Searching for competitors using Google...');
+      let competitors = 'Unable to detect competitors';
+      try {
+        const competitorSearchQuery = `${startupName} competitors alternatives`;
+        console.log(`🔍 Searching Google for: "${competitorSearchQuery}"`);
+        const competitorSearchResults = await this.browserbase.searchGoogle(competitorSearchQuery);
+        
+        if (competitorSearchResults && competitorSearchResults.text && competitorSearchResults.text.length > 100) {
+          console.log('Found competitor search results, analyzing...');
+          competitors = await this.openai.generateCompetitors(competitorSearchResults.text, startupName);
+        } else {
+          console.log('No competitor search results found, falling back to website analysis');
+          competitors = await this.openai.generateCompetitors(websiteContent.text, startupName);
+        }
+      } catch (error) {
+        console.log('Could not search for competitors:', error.message);
+        console.log('Falling back to website analysis for competitors');
+        competitors = await this.openai.generateCompetitors(websiteContent.text, startupName);
+      }
+
+      // Step 6: Compile report
       const report = {
         startupName,
         url: websiteUrl,
@@ -176,10 +179,10 @@ class StartupResearchAgent {
         timestamp: new Date().toISOString()
       };
 
-      // Step 6: Save reports
+      // Step 7: Save reports
       await this.saveReport(report);
 
-      // Step 7: Close session
+      // Step 8: Close session
       await this.browserbase.closeSession();
 
       console.log('✅ Research completed successfully!');

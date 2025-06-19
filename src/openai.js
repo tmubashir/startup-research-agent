@@ -80,34 +80,41 @@ ${websiteContent}
     return this.complete(prompt, 600, 0.2);
   }
 
-  async generateCompetitors(websiteContent, startupName) {
-    const prompt = `You are a startup research analyst. Based on the provided website content, generate a detailed competitive analysis for ${startupName}.
+  async generateCompetitors(searchContent, startupName) {
+    const prompt = `You are a startup research analyst. Based on the provided Google search results for "${startupName} competitors", generate a comprehensive competitive analysis.
 
-**Website Content:**
-${websiteContent}
+**Google Search Results:**
+${searchContent}
 
 **Instructions:**
 - Format your response in Markdown.
 - Use a section header: ## Competitive Analysis
-- List direct competitors as a bulleted list. For each competitor, include:
+- Extract and list direct competitors from the search results as a bulleted list. For each competitor, include:
   - **Name** (bold)
-  - *Description* (italic)
+  - *Description* (italic, from search results)
   - Sub-bullet for Competitive Angle (why/how they compete)
-- Use clear line breaks and spacing for readability.
-- After the list, add a section header: ## Competitive Landscape
+  - Sub-bullet for Market Position (if mentioned)
+- Add a section: ## Indirect Competitors (if found)
+- Add a section: ## Competitive Landscape
 - Write a short paragraph summarizing the overall competitive landscape and what makes ${startupName} unique.
+- Use clear line breaks and spacing for readability.
 
 **Example Format:**
 ## Competitive Analysis
-- **Competitor 1**: *Description*
+- **Competitor 1**: *Description from search results*
   - Competitive Angle: [explanation]
-- **Competitor 2**: *Description*
+  - Market Position: [if mentioned]
+- **Competitor 2**: *Description from search results*
   - Competitive Angle: [explanation]
+  - Market Position: [if mentioned]
+
+## Indirect Competitors
+- [List any indirect competitors found]
 
 ## Competitive Landscape
-[Paragraph]
+[Paragraph summarizing the competitive environment]
 `;
-    return this.complete(prompt, 700, 0.3);
+    return this.complete(prompt, 800, 0.3);
   }
 
   async generateIndustryOverview(websiteContent, startupName) {
