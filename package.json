@@ -1,0 +1,44 @@
+{
+  "name": "startup-research-agent",
+  "version": "1.0.0",
+  "description": "AI-powered startup research agent with web scraping and analysis",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "concurrently \"npm run server\" \"npm run frontend\"",
+    "server": "node server.js",
+    "frontend": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "test": "node test.js",
+    "install-frontend": "cd frontend && npm install",
+    "kill-backend": "lsof -ti:5050 | xargs kill -9 2>/dev/null || echo 'No process found on port 5050'",
+    "kill-frontend": "lsof -ti:3000 | xargs kill -9 2>/dev/null && lsof -ti:3001 | xargs kill -9 2>/dev/null || echo 'No frontend processes found'",
+    "kill-all": "npm run kill-backend && npm run kill-frontend",
+    "clean-start": "npm run kill-all && npm run dev",
+    "clean-server": "npm run kill-backend && npm run server",
+    "clean-frontend": "npm run kill-frontend && npm run frontend"
+  },
+  "keywords": [
+    "startup",
+    "research",
+    "ai",
+    "web-scraping",
+    "browserbase",
+    "openai"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "openai": "^4.20.1",
+    "react-markdown": "^10.1.0",
+    "selenium-webdriver": "^4.15.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -1,6 +1,11 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import StartupResearchAgent from './src/researchAgent.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -10,7 +15,7 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static files from frontend build
-app.use(express.static('frontend/dist'));
+app.use(express.static(path.join(__dirname, 'frontend/dist')));
 
 // API Routes
 app.post('/api/research', async (req, res) => {
@@ -51,11 +56,16 @@ app.get('/api/health', (req, res) => {
 
 // Serve React app for all other routes
 app.get('*', (req, res) => {
-  res.sendFile('index.html', { root: 'frontend/dist' });
+  res.sendFile(path.join(__dirname, 'frontend/dist', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📱 Frontend: http://localhost:${PORT}`);
-  console.log(`🔌 API: http://localhost:${PORT}/api`);
-});
+// Only start the server if this file is run directly (not imported)
+if (process.env.NODE_ENV !== 'production' || process.env.VERCEL !== '1') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📱 Frontend: http://localhost:${PORT}`);
+    console.log(`🔌 API: http://localhost:${PORT}/api`);
+  });
+}
+
+export default app;
