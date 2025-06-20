@@ -98,3 +98,4 @@ Thumbs.db
 
 # Reports directory (contains generated reports)
 reports/ 
+.vercel

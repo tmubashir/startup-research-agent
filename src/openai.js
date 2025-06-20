@@ -8,7 +8,7 @@ class OpenAIClient {
     });
   }
 
-  async complete(prompt, max_tokens = 800, temperature = 0.3) {
+  async _callOpenAI(prompt, max_tokens = 800, temperature = 0.3) {
     const response = await this.openai.chat.completions.create({
       model: 'gpt-4',
       messages: [{ role: 'user', content: prompt }],
@@ -47,7 +47,7 @@ ${websiteContent}
 ## Value Proposition
 [Description]
 `;
-    return this.complete(prompt, 800, 0.3);
+    return this._callOpenAI(prompt, 800, 0.3);
   }
 
   async generateFundingInfo(websiteContent, startupName) {
@@ -77,7 +77,7 @@ ${websiteContent}
 ## Funding Summary
 [Short summary]
 `;
-    return this.complete(prompt, 600, 0.2);
+    return this._callOpenAI(prompt, 600, 0.2);
   }
 
   async generateCompetitors(searchContent, startupName) {
@@ -114,7 +114,7 @@ ${searchContent}
 ## Competitive Landscape
 [Paragraph summarizing the competitive environment]
 `;
-    return this.complete(prompt, 800, 0.3);
+    return this._callOpenAI(prompt, 800, 0.3);
   }
 
   async generateIndustryOverview(websiteContent, startupName) {
@@ -142,7 +142,7 @@ ${websiteContent}
 ## Market Size
 [Description]
 `;
-    return this.complete(prompt, 600, 0.3);
+    return this._callOpenAI(prompt, 600, 0.3);
   }
 }
 

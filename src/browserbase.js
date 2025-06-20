@@ -164,8 +164,23 @@ class BrowserbaseClient {
       
       await this.navigateTo(searchUrl);
       
-      // Wait for search results to load
-      await this.driver.wait(until.elementLocated(By.id('search')), 10000);
+      // Wait for search results to load - try multiple selectors
+      try {
+        await this.driver.wait(until.elementLocated(By.id('search')), 5000);
+      } catch (error) {
+        try {
+          await this.driver.wait(until.elementLocated(By.css('.g')), 5000);
+        } catch (error) {
+          try {
+            await this.driver.wait(until.elementLocated(By.css('div[data-hveid]')), 5000);
+          } catch (error) {
+            console.log('Could not find standard search results, getting page content anyway');
+          }
+        }
+      }
+      
+      // Add a small delay to ensure content is loaded
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       const content = await this.getPageContent();
       return content;
@@ -185,17 +200,7 @@ class BrowserbaseClient {
       }
 
       if (this.sessionId) {
-        console.log(`🔒 Closing Browserbase session: ${this.sessionId}`);
-        await axios.delete(
-          `${this.apiUrl}/sessions/${this.sessionId}`,
-          {
-            headers: {
-              'X-BB-API-Key': this.apiKey
-            },
-            timeout: config.browserbase.timeout
-          }
-        );
-        console.log(`✅ Browserbase session closed: ${this.sessionId}`);
+        console.log(`✅ Browserbase session ${this.sessionId} closed via WebDriver.`);
         this.sessionId = null;
       }
     } catch (error) {
