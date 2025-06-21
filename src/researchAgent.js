@@ -120,59 +120,43 @@ class StartupResearchAgent {
     console.log(`🌐 Website: ${websiteUrl}`);
 
     try {
-      // Step 1: Create session and navigate to website
+      // Step 1: Scrape website content and take a screenshot
       console.log('📄 Scraping website content...');
-      await this.browserbase.createSession();
-      await this.browserbase.navigateTo(websiteUrl);
-      const websiteContent = await this.browserbase.getPageContent();
-      
-      if (!websiteContent || !websiteContent.text || websiteContent.text.length < 100) {
-        throw new Error('Failed to extract sufficient content from website');
-      }
+      const websiteContent = await this.browserbase.getWebsiteContent(websiteUrl);
+      const screenshot = websiteContent.screenshot;
 
-      // Step 2: Take screenshot
-      console.log('📸 Taking website screenshot...');
-      const screenshot = await this.browserbase.takeScreenshot();
-
-      // Step 3: Generate summary and industry overview using website content
+      // Step 2: Generate base analysis from website content
       console.log('🤖 Generating AI analysis...');
-      
       const summary = await this.openai.generateSummary(websiteContent.text, startupName);
 
+      // Step 3: Perform parallel, non-critical analyses with error handling
       let competitors = 'No competitor information found.';
-      try {
-        competitors = await this.openai.generateCompetitors(summary, startupName);
-      } catch (error) {
-        console.error(`❌ Failed to generate competitors: ${error.message}`);
-      }
-
       let fundingInfo = 'No funding information found.';
-      try {
-        fundingInfo = await this.openai.generateFundingInfo(summary, startupName);
-      } catch (error) {
-        console.error(`❌ Failed to generate funding info: ${error.message}`);
-      }
-
-
       let recentNews = 'No recent news found.';
+
       try {
-        recentNews = await this.openai.generateRecentNews(summary, startupName);
-      } catch (error) {
-        console.error(`❌ Failed to generate recent news: ${error.message}`);
+        console.log('🏆 Searching for competitors...');
+        const competitorSearchQuery = `${startupName} competitors alternatives`;
+        const competitorSearchResults = await this.browserbase.searchGoogle(competitorSearchQuery);
+        if (competitorSearchResults && competitorSearchResults.text) {
+          competitors = await this.openai.generateCompetitors(competitorSearchResults.text, startupName);
+        }
+      } catch (e) {
+        console.warn(`⚠️ Could not search for competitors: ${e.message}`);
       }
 
-      // Search for additional information
-      let fundingFromSearch = '';
       try {
         console.log('💰 Searching for funding information...');
-        const fundingContent = await this.browser.getFundingInfo(startupName);
-        if (fundingContent) {
-          fundingFromSearch = await this.openai.extractFundingInfo(fundingContent);
+        const fundingSearchQuery = `${startupName} funding rounds news`;
+        const fundingSearchResults = await this.browserbase.searchGoogle(fundingSearchQuery);
+        if (fundingSearchResults && fundingSearchResults.text) {
+          fundingInfo = await this.openai.extractFundingInfo(fundingSearchResults.text);
         }
-      } catch (error) {
-        console.error(`❌ Could not search for additional funding info: ${error.message}`);
+      } catch (e) {
+        console.warn(`⚠️ Could not search for funding info: ${e.message}`);
       }
 
+      // Step 4: Compile the final report
       const report = {
         startupName,
         url: websiteUrl,
