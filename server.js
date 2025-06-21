@@ -1,6 +1,11 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import StartupResearchAgent from './src/researchAgent.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -8,9 +13,6 @@ const PORT = process.env.PORT || 5050;
 // Middleware
 app.use(cors());
 app.use(express.json());
-
-// Serve static files from frontend build
-app.use(express.static('frontend/dist'));
 
 // API Routes
 app.post('/api/research', async (req, res) => {
@@ -24,38 +26,54 @@ app.post('/api/research', async (req, res) => {
     }
 
     console.log(`Starting research for: ${startupName} (${websiteUrl})`);
-
-    // Create research agent instance
-    const agent = new StartupResearchAgent();
     
-    // Run the research
-    const results = await agent.generateResearchReport(startupName, websiteUrl);
-
-    console.log(`Research completed for: ${startupName}`);
-
-    res.json(results);
-
+    const agent = new StartupResearchAgent();
+    const result = await agent.generateResearchReport(startupName, websiteUrl);
+    
+    res.json({
+      success: true,
+      data: result
+    });
   } catch (error) {
     console.error('Research error:', error);
     res.status(500).json({
-      error: 'Research failed. Please try again.',
-      details: error.message
+      error: error.message || 'Research failed'
     });
   }
 });
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
-});
+// Serve static files from frontend build (if it exists)
+const frontendPath = path.join(__dirname, 'frontend/dist');
+try {
+  app.use(express.static(frontendPath));
+  
+  // Serve index.html for all non-API routes
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(frontendPath, 'index.html'));
+    }
+  });
+} catch (error) {
+  console.log('Frontend build not found, serving API only');
+  
+  // Fallback for API-only deployment
+  app.get('/', (req, res) => {
+    res.json({
+      message: 'Startup Research Agent API',
+      endpoints: {
+        research: 'POST /api/research'
+      }
+    });
+  });
+}
 
-// Serve React app for all other routes
-app.get('*', (req, res) => {
-  res.sendFile('index.html', { root: 'frontend/dist' });
-});
+// Start the server only if not in a serverless environment (like Vercel)
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📱 Frontend: http://localhost:${PORT}`);
+    console.log(`🔌 API: http://localhost:${PORT}/api`);
+  });
+}
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📱 Frontend: http://localhost:${PORT}`);
-  console.log(`🔌 API: http://localhost:${PORT}/api`);
-});
+export default app;

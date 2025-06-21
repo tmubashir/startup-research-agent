@@ -164,14 +164,45 @@ class BrowserbaseClient {
       
       await this.navigateTo(searchUrl);
       
-      // Wait for search results to load
-      await this.driver.wait(until.elementLocated(By.id('search')), 10000);
+      // Wait for page to load and try multiple selectors for search results
+      let searchResultsFound = false;
+      const selectors = [
+        '#search',           // Main search container
+        '#rso',              // Results container
+        '.g',                // Individual results
+        '[data-hveid]',      // Results with data attributes
+        '#main',             // Main content area
+        'div[role="main"]'   // Main role container
+      ];
+      
+      for (const selector of selectors) {
+        try {
+          await this.driver.wait(until.elementLocated(By.css(selector)), 3000);
+          console.log(`✅ Found search results with selector: ${selector}`);
+          searchResultsFound = true;
+          break;
+        } catch (error) {
+          // Continue to next selector
+        }
+      }
+      
+      if (!searchResultsFound) {
+        console.log('⚠️ Could not find standard search results, proceeding with page content');
+      }
+      
+      // Add a small delay to ensure content is loaded
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
       const content = await this.getPageContent();
       return content;
     } catch (error) {
       console.error(`❌ Failed to search Google for "${query}":`, error.message);
-      throw error;
+      // Return empty content instead of throwing error
+      return {
+        title: 'Google Search',
+        html: '<html><body>Search failed</body></html>',
+        text: 'Search failed'
+      };
     }
   }
 
@@ -185,17 +216,7 @@ class BrowserbaseClient {
       }
 
       if (this.sessionId) {
-        console.log(`🔒 Closing Browserbase session: ${this.sessionId}`);
-        await axios.delete(
-          `${this.apiUrl}/sessions/${this.sessionId}`,
-          {
-            headers: {
-              'X-BB-API-Key': this.apiKey
-            },
-            timeout: config.browserbase.timeout
-          }
-        );
-        console.log(`✅ Browserbase session closed: ${this.sessionId}`);
+        console.log(`✅ Browserbase session ${this.sessionId} closed via WebDriver.`);
         this.sessionId = null;
       }
     } catch (error) {

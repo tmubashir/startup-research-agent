@@ -120,61 +120,50 @@ class StartupResearchAgent {
     console.log(`🌐 Website: ${websiteUrl}`);
 
     try {
-      // Step 1: Create session and navigate to website
+      // Step 1: Scrape website content and take a screenshot
       console.log('📄 Scraping website content...');
-      await this.browserbase.createSession();
-      await this.browserbase.navigateTo(websiteUrl);
-      const websiteContent = await this.browserbase.getPageContent();
-      
-      if (!websiteContent || !websiteContent.text || websiteContent.text.length < 100) {
-        throw new Error('Failed to extract sufficient content from website');
-      }
+      const websiteContent = await this.browserbase.getWebsiteContent(websiteUrl);
+      const screenshot = websiteContent.screenshot;
 
-      // Step 2: Take screenshot
-      console.log('📸 Taking website screenshot...');
-      const screenshot = await this.browserbase.takeScreenshot();
-
-      // Step 3: Generate summary and industry overview using website content
+      // Step 2: Generate base analysis from website content
       console.log('🤖 Generating AI analysis...');
-      
-      const [summary, industry] = await Promise.all([
-        this.openai.generateSummary(websiteContent.text, startupName),
-        this.openai.generateIndustryOverview(websiteContent.text, startupName)
-      ]);
+      const summary = await this.openai.generateSummary(websiteContent.text, startupName);
 
-      // Step 4: Enhanced funding search
-      console.log('💰 Searching for funding information...');
-      const funding = await this.extractFundingInfo(websiteContent.text, startupName);
+      // Step 3: Perform parallel, non-critical analyses with error handling
+      let competitors = 'No competitor information found.';
+      let fundingInfo = 'No funding information found.';
+      let recentNews = 'No recent news found.';
 
-      // Step 5: Enhanced competitor detection using Google search
-      console.log('🏆 Searching for competitors using Google...');
-      let competitors = 'Unable to detect competitors';
       try {
+        console.log('🏆 Searching for competitors...');
         const competitorSearchQuery = `${startupName} competitors alternatives`;
-        console.log(`🔍 Searching Google for: "${competitorSearchQuery}"`);
         const competitorSearchResults = await this.browserbase.searchGoogle(competitorSearchQuery);
-        
-        if (competitorSearchResults && competitorSearchResults.text && competitorSearchResults.text.length > 100) {
-          console.log('Found competitor search results, analyzing...');
+        if (competitorSearchResults && competitorSearchResults.text) {
           competitors = await this.openai.generateCompetitors(competitorSearchResults.text, startupName);
-        } else {
-          console.log('No competitor search results found, falling back to website analysis');
-          competitors = await this.openai.generateCompetitors(websiteContent.text, startupName);
         }
-      } catch (error) {
-        console.log('Could not search for competitors:', error.message);
-        console.log('Falling back to website analysis for competitors');
-        competitors = await this.openai.generateCompetitors(websiteContent.text, startupName);
+      } catch (e) {
+        console.warn(`⚠️ Could not search for competitors: ${e.message}`);
       }
 
-      // Step 6: Compile report
+      try {
+        console.log('💰 Searching for funding information...');
+        const fundingSearchQuery = `${startupName} funding rounds news`;
+        const fundingSearchResults = await this.browserbase.searchGoogle(fundingSearchQuery);
+        if (fundingSearchResults && fundingSearchResults.text) {
+          fundingInfo = await this.openai.extractFundingInfo(fundingSearchResults.text);
+        }
+      } catch (e) {
+        console.warn(`⚠️ Could not search for funding info: ${e.message}`);
+      }
+
+      // Step 4: Compile the final report
       const report = {
         startupName,
         url: websiteUrl,
         summary,
-        funding,
+        funding: fundingInfo,
         competitors,
-        industry,
+        recentNews,
         screenshot,
         timestamp: new Date().toISOString()
       };
