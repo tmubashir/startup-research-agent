@@ -28,7 +28,7 @@ function App() {
       }
 
       const data = await response.json()
-      setResults(data)
+      setResults(data.data || data)
     } catch (err) {
       setError(err.message)
     } finally {
