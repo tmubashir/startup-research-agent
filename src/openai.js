@@ -47,7 +47,7 @@ ${websiteContent}
 ## Value Proposition
 [Description]
 `;
-    return this.complete(prompt, 800, 0.3);
+    return await this.complete(prompt, 800, 0.3);
   }
 
   async generateFundingInfo(websiteContent, startupName) {
@@ -77,7 +77,7 @@ ${websiteContent}
 ## Funding Summary
 [Short summary]
 `;
-    return this.complete(prompt, 600, 0.2);
+    return await this.complete(prompt, 600, 0.2);
   }
 
   async generateCompetitors(searchContent, startupName) {
@@ -114,7 +114,7 @@ ${searchContent}
 ## Competitive Landscape
 [Paragraph summarizing the competitive environment]
 `;
-    return this.complete(prompt, 800, 0.3);
+    return await this.complete(prompt, 800, 0.3);
   }
 
   async generateIndustryOverview(websiteContent, startupName) {
@@ -142,7 +142,7 @@ ${websiteContent}
 ## Market Size
 [Description]
 `;
-    return this.complete(prompt, 600, 0.3);
+    return await this.complete(prompt, 600, 0.3);
   }
 }
 

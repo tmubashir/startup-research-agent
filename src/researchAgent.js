@@ -215,7 +215,7 @@ class StartupResearchAgent {
 
 ---
 
-**Website:** [${report.websiteUrl}](${report.websiteUrl})  
+**Website:** [${report.url}](${report.url})  
 **Generated:** ${timestamp}
 
 ---
