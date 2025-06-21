@@ -120,6 +120,9 @@ class StartupResearchAgent {
     console.log(`🌐 Website: ${websiteUrl}`);
 
     try {
+      // Initialize Browserbase session
+      await this.browserbase.createSession();
+      
       // Step 1: Scrape website content and take a screenshot
       console.log('📄 Scraping website content...');
 
