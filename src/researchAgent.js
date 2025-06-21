@@ -137,44 +137,49 @@ class StartupResearchAgent {
       // Step 3: Generate summary and industry overview using website content
       console.log('🤖 Generating AI analysis...');
       
-      const [summary, industry] = await Promise.all([
-        this.openai.generateSummary(websiteContent.text, startupName),
-        this.openai.generateIndustryOverview(websiteContent.text, startupName)
-      ]);
+      const summary = await this.openai.generateSummary(websiteContent.text, startupName);
 
-      // Step 4: Enhanced funding search
-      console.log('💰 Searching for funding information...');
-      const funding = await this.extractFundingInfo(websiteContent.text, startupName);
-
-      // Step 5: Enhanced competitor detection using Google search
-      console.log('🏆 Searching for competitors using Google...');
-      let competitors = 'Unable to detect competitors';
+      let competitors = 'No competitor information found.';
       try {
-        const competitorSearchQuery = `${startupName} competitors alternatives`;
-        console.log(`🔍 Searching Google for: "${competitorSearchQuery}"`);
-        const competitorSearchResults = await this.browserbase.searchGoogle(competitorSearchQuery);
-        
-        if (competitorSearchResults && competitorSearchResults.text && competitorSearchResults.text.length > 100) {
-          console.log('Found competitor search results, analyzing...');
-          competitors = await this.openai.generateCompetitors(competitorSearchResults.text, startupName);
-        } else {
-          console.log('No competitor search results found, falling back to website analysis');
-          competitors = await this.openai.generateCompetitors(websiteContent.text, startupName);
-        }
+        competitors = await this.openai.generateCompetitors(summary, startupName);
       } catch (error) {
-        console.log('Could not search for competitors:', error.message);
-        console.log('Falling back to website analysis for competitors');
-        competitors = await this.openai.generateCompetitors(websiteContent.text, startupName);
+        console.error(`❌ Failed to generate competitors: ${error.message}`);
       }
 
-      // Step 6: Compile report
+      let fundingInfo = 'No funding information found.';
+      try {
+        fundingInfo = await this.openai.generateFundingInfo(summary, startupName);
+      } catch (error) {
+        console.error(`❌ Failed to generate funding info: ${error.message}`);
+      }
+
+
+      let recentNews = 'No recent news found.';
+      try {
+        recentNews = await this.openai.generateRecentNews(summary, startupName);
+      } catch (error) {
+        console.error(`❌ Failed to generate recent news: ${error.message}`);
+      }
+
+      // Search for additional information
+      let fundingFromSearch = '';
+      try {
+        console.log('💰 Searching for funding information...');
+        const fundingContent = await this.browser.getFundingInfo(startupName);
+        if (fundingContent) {
+          fundingFromSearch = await this.openai.extractFundingInfo(fundingContent);
+        }
+      } catch (error) {
+        console.error(`❌ Could not search for additional funding info: ${error.message}`);
+      }
+
       const report = {
         startupName,
         url: websiteUrl,
         summary,
-        funding,
+        funding: fundingInfo,
         competitors,
-        industry,
+        recentNews,
         screenshot,
         timestamp: new Date().toISOString()
       };
