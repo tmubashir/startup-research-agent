@@ -164,29 +164,45 @@ class BrowserbaseClient {
       
       await this.navigateTo(searchUrl);
       
-      // Wait for search results to load - try multiple selectors
-      try {
-        await this.driver.wait(until.elementLocated(By.id('search')), 5000);
-      } catch (error) {
+      // Wait for page to load and try multiple selectors for search results
+      let searchResultsFound = false;
+      const selectors = [
+        '#search',           // Main search container
+        '#rso',              // Results container
+        '.g',                // Individual results
+        '[data-hveid]',      // Results with data attributes
+        '#main',             // Main content area
+        'div[role="main"]'   // Main role container
+      ];
+      
+      for (const selector of selectors) {
         try {
-          await this.driver.wait(until.elementLocated(By.css('.g')), 5000);
+          await this.driver.wait(until.elementLocated(By.css(selector)), 3000);
+          console.log(`✅ Found search results with selector: ${selector}`);
+          searchResultsFound = true;
+          break;
         } catch (error) {
-          try {
-            await this.driver.wait(until.elementLocated(By.css('div[data-hveid]')), 5000);
-          } catch (error) {
-            console.log('Could not find standard search results, getting page content anyway');
-          }
+          // Continue to next selector
         }
       }
       
+      if (!searchResultsFound) {
+        console.log('⚠️ Could not find standard search results, proceeding with page content');
+      }
+      
       // Add a small delay to ensure content is loaded
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
       const content = await this.getPageContent();
       return content;
     } catch (error) {
       console.error(`❌ Failed to search Google for "${query}":`, error.message);
-      throw error;
+      // Return empty content instead of throwing error
+      return {
+        title: 'Google Search',
+        html: '<html><body>Search failed</body></html>',
+        text: 'Search failed'
+      };
     }
   }
 
