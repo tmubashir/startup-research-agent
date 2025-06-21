@@ -122,10 +122,15 @@ class StartupResearchAgent {
     try {
       // Step 1: Scrape website content and take a screenshot
       console.log('📄 Scraping website content...');
-      const websiteContent = await this.browserbase.getWebsiteContent(websiteUrl);
-      const screenshot = websiteContent.screenshot;
 
-      // Step 2: Generate base analysis from website content
+      // Navigate to the website and get content
+      await this.browserbase.navigateTo(websiteUrl);
+      const websiteContent = await this.browserbase.getPageContent();
+
+      // Take a screenshot
+      const screenshot = await this.browserbase.takeScreenshot();
+
+      // Step 2: Generate AI analysis
       console.log('🤖 Generating AI analysis...');
       const summary = await this.openai.generateSummary(websiteContent.text, startupName);
 
