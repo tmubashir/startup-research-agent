@@ -18,7 +18,7 @@ An AI-powered startup research platform that analyzes websites, extracts funding
 - **Frontend**: React, Vite
 - **AI**: OpenAI GPT-4
 - **Web Scraping**: Browserbase, Selenium WebDriver
-- **Deployment**: Vercel
+- **Deployment**: Railway
 
 ## 🚀 Quick Start
 
@@ -52,7 +52,7 @@ An AI-powered startup research platform that analyzes websites, extracts funding
    ```env
    OPENAI_API_KEY=your_openai_api_key
    BROWSERBASE_API_KEY=your_browserbase_api_key
-   BROWSERBASE_PROJECT_ID=your_project_id
+   BROWSERBASE_PROJECT_ID=your_browserbase_project_id
    ```
 
 4. **Start the development servers**
@@ -64,11 +64,11 @@ An AI-powered startup research platform that analyzes websites, extracts funding
    - Frontend: http://localhost:3000
    - Backend: http://localhost:5050
 
-## 🌐 Deployment to Vercel
+## 🌐 Deployment to Railway
 
 ### Prerequisites
 
-- Vercel account
+- Railway account
 - GitHub repository with your code
 
 ### Step-by-Step Deployment
@@ -77,30 +77,30 @@ An AI-powered startup research platform that analyzes websites, extracts funding
    - Ensure all files are committed to git
    - The `vercel.json` configuration is already included
 
-2. **Connect to Vercel**
-   - Go to [vercel.com](https://vercel.com)
+2. **Connect to Railway**
+   - Go to [railway.app](https://railway.app)
    - Sign in with your GitHub account
    - Click "New Project"
    - Import your repository
 
 3. **Configure environment variables**
-   In your Vercel project settings, add these environment variables:
+   In your Railway project settings, add these environment variables:
    ```
    OPENAI_API_KEY=your_openai_api_key
    BROWSERBASE_API_KEY=your_browserbase_api_key
-   BROWSERBASE_PROJECT_ID=your_project_id
+   BROWSERBASE_PROJECT_ID=your_browserbase_project_id
    NODE_ENV=production
    ```
 
 4. **Deploy**
-   - Vercel will automatically detect the configuration
+   - Railway will automatically detect the configuration
    - Click "Deploy"
    - Wait for the build to complete
 
 5. **Access your app**
-   - Your app will be available at `https://your-project-name.vercel.app`
+   - Your app will be available at `https://your-project-name.railway.app`
 
-### Vercel Configuration
+### Railway Configuration
 
 The `vercel.json` file configures:
 - **Backend**: Node.js server for API routes
@@ -126,7 +126,7 @@ agent_research/
 ├── reports/                # Generated reports
 ├── server.js               # Express server
 ├── package.json            # Backend dependencies
-├── vercel.json            # Vercel configuration
+├── vercel.json            # Railway configuration
 └── README.md
 ```
 
