@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import StartupResearchAgent from './src/researchAgent.js';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,27 +43,41 @@ app.post('/api/research', async (req, res) => {
   }
 });
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// Test endpoint
+app.get('/test', (req, res) => {
+  res.json({ 
+    message: 'Server is working!', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // Serve static files from frontend build (if it exists)
-const frontendPath = path.join(__dirname, 'frontend/dist');
-try {
+const frontendPath = path.join(__dirname, 'frontend', 'dist');
+if (fs.existsSync(frontendPath)) {
+  console.log('📁 Serving frontend from:', frontendPath);
   app.use(express.static(frontendPath));
   
-  // Serve index.html for all non-API routes
+  // Serve index.html for all routes (SPA routing)
   app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api')) {
-      res.sendFile(path.join(frontendPath, 'index.html'));
-    }
+    res.sendFile(path.join(frontendPath, 'index.html'));
   });
-} catch (error) {
-  console.log('Frontend build not found, serving API only');
-  
-  // Fallback for API-only deployment
+} else {
+  console.log('⚠️  Frontend build not found at:', frontendPath);
   app.get('/', (req, res) => {
-    res.json({
-      message: 'Startup Research Agent API',
-      endpoints: {
-        research: 'POST /api/research'
-      }
+    res.json({ 
+      message: 'Backend is running, but frontend is not built',
+      frontendPath,
+      timestamp: new Date().toISOString()
     });
   });
 }
