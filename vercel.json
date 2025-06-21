@@ -3,10 +3,7 @@
   "builds": [
     {
       "src": "server.js",
-      "use": "@vercel/node",
-      "config": {
-        "maxDuration": 60
-      }
+      "use": "@vercel/node"
     },
     {
       "src": "frontend/package.json",
@@ -19,17 +16,11 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "server.js"
-    },
-    {
-      "handle": "filesystem"
+      "dest": "/server.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/frontend/dist/$1"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 } 
