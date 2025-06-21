@@ -158,7 +158,7 @@ class StartupResearchAgent {
         const fundingSearchQuery = `${startupName} funding rounds news`;
         const fundingSearchResults = await this.browserbase.searchGoogle(fundingSearchQuery);
         if (fundingSearchResults && fundingSearchResults.text) {
-          fundingInfo = await this.openai.extractFundingInfo(fundingSearchResults.text);
+          fundingInfo = await this.openai.generateFundingInfo(fundingSearchResults.text, startupName);
         }
       } catch (e) {
         console.warn(`⚠️ Could not search for funding info: ${e.message}`);
